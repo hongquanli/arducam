@@ -374,9 +374,18 @@ class ArducamCamera:
             self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
 
     def _apply_resolution(self, w: int, h: int) -> None:
-        """Set width, height, and FPS on the capture device."""
+        """Set width, height, and FPS on the capture device.
+
+        On Windows/DirectShow, resolution changes while streaming often fail
+        silently. We release and reopen the device to force the change.
+        """
         if self._cap is None:
             return
+        if _is_windows():
+            self._cap.release()
+            backend = _get_backend()
+            self._cap = cv2.VideoCapture(self.device_index, backend)
+            self._cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
         fps = self.get_fps_for_resolution(w, h)
