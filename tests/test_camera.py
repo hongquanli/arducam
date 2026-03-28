@@ -39,27 +39,27 @@ class TestResolutionFpsTable:
             assert isinstance(val, int)
 
 
-class TestGetBackend:
+class TestGetBackends:
     @patch("arducam.camera.sys")
     def test_linux_returns_v4l2(self, mock_sys):
-        from arducam.camera import _get_backend
+        from arducam.camera import _get_backends
 
         mock_sys.platform = "linux"
-        assert _get_backend() == cv2.CAP_V4L2
+        assert _get_backends() == [cv2.CAP_V4L2]
 
     @patch("arducam.camera.sys")
-    def test_windows_returns_dshow(self, mock_sys):
-        from arducam.camera import _get_backend
+    def test_windows_returns_msmf_then_dshow(self, mock_sys):
+        from arducam.camera import _get_backends
 
         mock_sys.platform = "win32"
-        assert _get_backend() == cv2.CAP_DSHOW
+        assert _get_backends() == [cv2.CAP_MSMF, cv2.CAP_DSHOW]
 
     @patch("arducam.camera.sys")
     def test_macos_returns_any(self, mock_sys):
-        from arducam.camera import _get_backend
+        from arducam.camera import _get_backends
 
         mock_sys.platform = "darwin"
-        assert _get_backend() == cv2.CAP_ANY
+        assert _get_backends() == [cv2.CAP_ANY]
 
 
 class TestArducamCameraInit:
@@ -152,7 +152,7 @@ def _make_open_camera(mock_vc_class, read_returns=None):
 
 
 class TestCameraOpenClose:
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_open_creates_capture(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -162,7 +162,7 @@ class TestCameraOpenClose:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_open_sets_mjpg_fourcc(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -172,7 +172,7 @@ class TestCameraOpenClose:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_close_releases_capture(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -181,14 +181,14 @@ class TestCameraOpenClose:
         mock_cap.release.assert_called_once()
         assert not cam.is_open
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_close_idempotent(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
         cam.close()
         cam.close()  # should not raise
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_context_manager(self, mock_vc_class, mock_backend):
         mock_cap = MagicMock()
@@ -204,7 +204,7 @@ class TestCameraOpenClose:
         time.sleep(0.1)
         mock_cap.release.assert_called_once()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_is_open_false_before_open(self, mock_vc_class, mock_backend):
         from arducam.camera import ArducamCamera
@@ -214,7 +214,7 @@ class TestCameraOpenClose:
 
 
 class TestCaptureThread:
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_get_frame_returns_frame(self, mock_vc_class, mock_backend):
         frame = _make_fake_frame()
@@ -226,7 +226,7 @@ class TestCaptureThread:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_get_frame_returns_copy(self, mock_vc_class, mock_backend):
         _make_fake_frame()
@@ -238,7 +238,7 @@ class TestCaptureThread:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_get_frame_returns_none_when_no_frame(self, mock_vc_class, mock_backend):
         mock_cap = MagicMock()
@@ -263,7 +263,7 @@ class TestCaptureThread:
         cam = ArducamCamera()
         assert cam.get_frame() is None
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_resolution_property(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -275,7 +275,7 @@ class TestCaptureThread:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_capture_thread_is_daemon(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -291,7 +291,7 @@ class TestCaptureThread:
 
 
 class TestCameraControls:
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_set_resolution(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -305,7 +305,7 @@ class TestCameraControls:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_set_exposure_manual(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -320,7 +320,7 @@ class TestCameraControls:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_set_exposure_auto(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -335,7 +335,7 @@ class TestCameraControls:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_set_iso(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -348,7 +348,7 @@ class TestCameraControls:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_set_focus_manual(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -363,7 +363,7 @@ class TestCameraControls:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_set_focus_auto(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -378,7 +378,7 @@ class TestCameraControls:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_get_current_settings_keys(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -399,7 +399,7 @@ class TestCameraControls:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_get_current_settings_defaults(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -417,7 +417,7 @@ class TestCameraControls:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_commands_processed_on_capture_thread(self, mock_vc_class, mock_backend):
         """Verify that cap.set calls happen on the capture thread, not caller."""
@@ -437,7 +437,7 @@ class TestCameraControls:
 
 
 class TestFullResolutionCapture:
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_capture_full_resolution_returns_frame(self, mock_vc_class, mock_backend):
         full_frame = _make_fake_frame(8000, 6000)
@@ -468,7 +468,7 @@ class TestFullResolutionCapture:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_capture_full_resolution_restores_original(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -481,7 +481,7 @@ class TestFullResolutionCapture:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_capture_full_resolution_sets_8000x6000(self, mock_vc_class, mock_backend):
         cam, mock_cap = _make_open_camera(mock_vc_class)
@@ -493,7 +493,7 @@ class TestFullResolutionCapture:
         finally:
             cam.close()
 
-    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera._get_backends", return_value=[cv2.CAP_ANY])
     @patch("arducam.camera.cv2.VideoCapture")
     def test_capture_full_resolution_returns_none_on_failure(self, mock_vc_class, mock_backend):
         mock_cap = MagicMock()

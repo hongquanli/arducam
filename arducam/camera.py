@@ -30,13 +30,13 @@ def _is_windows() -> bool:
     return sys.platform == "win32"
 
 
-def _get_backend() -> int:
-    """Return the appropriate OpenCV VideoCapture backend for the current OS."""
+def _get_backends() -> list[int]:
+    """Return backends to try in order for the current OS."""
     if sys.platform.startswith("linux"):
-        return cv2.CAP_V4L2
+        return [cv2.CAP_V4L2]
     elif _is_windows():
-        return cv2.CAP_MSMF
-    return cv2.CAP_ANY
+        return [cv2.CAP_MSMF, cv2.CAP_DSHOW]
+    return [cv2.CAP_ANY]
 
 
 def get_exposure_range() -> tuple[int, int, int, str]:
@@ -78,6 +78,7 @@ class ArducamCamera:
         self.device_index = device_index
         self._simulate = simulate
         self._cap: Optional[cv2.VideoCapture] = None
+        self._backend: int = _get_backends()[0]
         self._capture_thread: Optional[threading.Thread] = None
         self._running = False
         self._frame: Optional[np.ndarray] = None
@@ -109,13 +110,22 @@ class ArducamCamera:
     # Open / close
     # ------------------------------------------------------------------
 
+    def _open_capture(self) -> cv2.VideoCapture:
+        """Try each backend until one opens the camera."""
+        for backend in _get_backends():
+            cap = cv2.VideoCapture(self.device_index, backend)
+            if cap.isOpened():
+                self._backend = backend
+                return cap
+            cap.release()
+        raise RuntimeError(f"Failed to open camera at index {self.device_index}")
+
     def open(self) -> None:
         """Open the camera and start the capture thread."""
         if self._running:
             return
         if not self._simulate:
-            backend = _get_backend()
-            self._cap = cv2.VideoCapture(self.device_index, backend)
+            self._cap = self._open_capture()
             self._apply_resolution(self._resolution[0], self._resolution[1])
         self._running = True
         self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
@@ -382,8 +392,7 @@ class ArducamCamera:
             return
         if _is_windows():
             self._cap.release()
-            backend = _get_backend()
-            self._cap = cv2.VideoCapture(self.device_index, backend)
+            self._cap = cv2.VideoCapture(self.device_index, self._backend)
         self._cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
