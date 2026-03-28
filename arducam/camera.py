@@ -46,7 +46,7 @@ def get_exposure_range() -> tuple[int, int, int, str]:
     Windows (DirectShow): log2 scale, range -13 to -1 (0.12ms to 0.5s).
     """
     if _is_windows():
-        return (-13, -1, -6, "log2 seconds (2^n)")
+        return (-13, 0, -6, "log2 seconds (2^n)")
     return (1, 10000, 200, "× 0.1ms")
 
 
