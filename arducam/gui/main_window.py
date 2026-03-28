@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from arducam.camera import ArducamCamera
+from arducam.camera import ArducamCamera, exposure_to_fps
 from arducam.gui.controls import ControlsPanel
 from arducam.gui.live_view import LiveViewWidget
 from arducam.gui.recording_panel import RecordingPanel
@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
 
         # --- Connect control signals ---
         self._controls.resolution_changed.connect(self._on_resolution_changed)
-        self._controls.exposure_changed.connect(self._camera.set_exposure)
+        self._controls.exposure_changed.connect(self._on_exposure_changed)
         self._controls.exposure_auto_changed.connect(self._on_exposure_auto)
         self._controls.iso_changed.connect(self._camera.set_iso)
         self._controls.focus_changed.connect(self._camera.set_focus)
@@ -88,14 +88,14 @@ class MainWindow(QMainWindow):
         self._recording_panel.record_toggled.connect(self._on_record_toggled)
 
         # --- Open camera ---
+        self._native_fps = 30  # FPS from resolution table
+        self._effective_fps = 30  # actual FPS after exposure limit
         try:
             self._camera.open()
-            fps = self._camera.get_fps_for_resolution(*self._camera.resolution) or 30
-            self._frame_timer.start(1000 // fps)
-            self._status.showMessage(
-                f"Camera opened: {self._camera.resolution[0]}x{self._camera.resolution[1]} "
-                f"@ {fps}fps"
-            )
+            self._native_fps = self._camera.get_fps_for_resolution(*self._camera.resolution) or 30
+            self._effective_fps = self._native_fps
+            self._frame_timer.start(1000 // self._effective_fps)
+            self._update_status()
         except RuntimeError as e:
             self._status.showMessage(f"Camera error: {e}")
 
@@ -108,15 +108,38 @@ class MainWindow(QMainWindow):
 
     # --- Control handlers ---
 
+    def _update_fps(self) -> None:
+        """Recalculate effective FPS from native FPS and exposure time, update timer."""
+        self._effective_fps = self._native_fps
+        if not self._camera._exposure_auto and self._camera._exposure is not None:
+            max_fps = exposure_to_fps(int(self._camera._exposure))
+            self._effective_fps = min(self._native_fps, max(1, int(max_fps)))
+        self._frame_timer.setInterval(1000 // self._effective_fps)
+        self._update_status()
+
+    def _update_status(self) -> None:
+        w, h = self._camera.resolution
+        if self._effective_fps < self._native_fps:
+            self._status.showMessage(
+                f"{w}x{h} @ {self._effective_fps}fps"
+                f" (limited by exposure, native {self._native_fps}fps)"
+            )
+        else:
+            self._status.showMessage(f"{w}x{h} @ {self._effective_fps}fps")
+
     def _on_resolution_changed(self, width: int, height: int):
         self._camera.set_resolution(width, height)
-        fps = self._camera.get_fps_for_resolution(width, height) or 30
-        self._frame_timer.setInterval(1000 // fps)
-        self._status.showMessage(f"Resolution: {width}x{height} @ {fps}fps")
+        self._native_fps = self._camera.get_fps_for_resolution(width, height) or 30
+        self._update_fps()
+
+    def _on_exposure_changed(self, value: int):
+        self._camera.set_exposure(value)
+        self._update_fps()
 
     def _on_exposure_auto(self, auto: bool):
         if auto:
             self._camera.set_exposure_auto()
+            self._update_fps()
 
     def _on_focus_auto(self, auto: bool):
         if auto:

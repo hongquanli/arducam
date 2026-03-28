@@ -50,6 +50,22 @@ def get_exposure_range() -> tuple[int, int, int, str]:
     return (1, 10000, 200, "× 0.1ms")
 
 
+def exposure_to_fps(exposure_value: int) -> float:
+    """Convert a platform-specific exposure value to the max achievable FPS.
+
+    Returns the max FPS the camera can deliver at this exposure time.
+    """
+    if _is_windows():
+        # Value is log2 seconds: exposure_seconds = 2^value
+        exposure_s = 2.0**exposure_value
+    else:
+        # Value is in units of 0.1ms
+        exposure_s = exposure_value * 0.0001
+    if exposure_s <= 0:
+        return 999.0
+    return 1.0 / exposure_s
+
+
 def get_gain_range() -> tuple[int, int, int]:
     """Return (min, max, default) for gain. Device-specific; 0–255 typical for UVC."""
     return (0, 255, 32)
