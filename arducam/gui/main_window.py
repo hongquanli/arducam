@@ -144,6 +144,8 @@ class MainWindow(QMainWindow):
         self._recording_panel.set_full_res_enabled(False)
 
         task = _FullResCaptureTask(self._camera)
+        task.setAutoDelete(False)
+        self._full_res_task = task  # prevent GC before signal delivery
         task.signals.finished.connect(self._on_full_res_done)
         self._thread_pool.start(task)
 
