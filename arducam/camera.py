@@ -160,6 +160,14 @@ class ArducamCamera:
     def resolution(self) -> tuple[int, int]:
         return self._resolution
 
+    @property
+    def exposure(self) -> Optional[float]:
+        return self._exposure
+
+    @property
+    def exposure_auto(self) -> bool:
+        return self._exposure_auto
+
     # ------------------------------------------------------------------
     # Frame access
     # ------------------------------------------------------------------

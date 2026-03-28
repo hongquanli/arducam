@@ -110,10 +110,13 @@ class MainWindow(QMainWindow):
 
     def _update_fps(self) -> None:
         """Recalculate effective FPS from native FPS and exposure time, update timer."""
-        self._effective_fps = self._native_fps
-        if not self._camera._exposure_auto and self._camera._exposure is not None:
-            max_fps = exposure_to_fps(int(self._camera._exposure))
-            self._effective_fps = min(self._native_fps, max(1, int(max_fps)))
+        new_fps = self._native_fps
+        if not self._camera.exposure_auto and self._camera.exposure is not None:
+            max_fps = exposure_to_fps(int(self._camera.exposure))
+            new_fps = min(self._native_fps, max(1, int(max_fps)))
+        if new_fps == self._effective_fps:
+            return
+        self._effective_fps = new_fps
         self._frame_timer.setInterval(1000 // self._effective_fps)
         self._update_status()
 
