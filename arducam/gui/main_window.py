@@ -37,12 +37,15 @@ class _FullResCaptureTask(QRunnable):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, device_index: int = 0):
+    def __init__(self, device_index: int = 0, simulate: bool = False):
         super().__init__()
-        self.setWindowTitle("Arducam IMX586 Controller")
+        title = "Arducam IMX586 Controller"
+        if simulate:
+            title += " [SIMULATION]"
+        self.setWindowTitle(title)
         self.setMinimumSize(1024, 700)
 
-        self._camera = ArducamCamera(device_index)
+        self._camera = ArducamCamera(device_index, simulate=simulate)
         self._recorder = VideoRecorder()
         self._thread_pool = QThreadPool()
 

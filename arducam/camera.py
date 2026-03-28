@@ -38,8 +38,9 @@ def _get_backend() -> int:
 class ArducamCamera:
     """High-level API for the Arducam IMX586 camera."""
 
-    def __init__(self, device_index: int = 0) -> None:
+    def __init__(self, device_index: int = 0, simulate: bool = False) -> None:
         self.device_index = device_index
+        self._simulate = simulate
         self._cap: Optional[cv2.VideoCapture] = None
         self._capture_thread: Optional[threading.Thread] = None
         self._running = False
@@ -47,6 +48,7 @@ class ArducamCamera:
         self._frame_lock = threading.Lock()
         self._cmd_queue: queue.Queue = queue.Queue()
         self._resolution: tuple[int, int] = _DEFAULT_RESOLUTION
+        self._sim_frame_count = 0
 
         # Locally tracked settings (cross-platform reliable state)
         self._exposure: Optional[float] = None
@@ -75,11 +77,12 @@ class ArducamCamera:
         """Open the camera and start the capture thread."""
         if self._running:
             return
-        backend = _get_backend()
-        self._cap = cv2.VideoCapture(self.device_index, backend)
-        fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-        self._cap.set(cv2.CAP_PROP_FOURCC, fourcc)
-        self._apply_resolution(self._resolution[0], self._resolution[1])
+        if not self._simulate:
+            backend = _get_backend()
+            self._cap = cv2.VideoCapture(self.device_index, backend)
+            fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+            self._cap.set(cv2.CAP_PROP_FOURCC, fourcc)
+            self._apply_resolution(self._resolution[0], self._resolution[1])
         self._running = True
         self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
         self._capture_thread.start()
@@ -140,6 +143,7 @@ class ArducamCamera:
 
     def set_resolution(self, w: int, h: int) -> None:
         """Queue a resolution change."""
+        self._resolution = (w, h)
         self._cmd_queue.put(("set_resolution", (w, h)))
 
     def set_exposure(self, value: float) -> None:
@@ -217,9 +221,13 @@ class ArducamCamera:
             except queue.Empty:
                 pass
 
-            # Read frame — cap.read() blocks until a frame is available,
-            # but if read fails (no camera / error), sleep to avoid busy-wait
-            if self._cap is not None:
+            if self._simulate:
+                frame = self._generate_sim_frame()
+                with self._frame_lock:
+                    self._frame = frame
+                fps = self.get_fps_for_resolution(*self._resolution) or 30
+                time.sleep(1.0 / fps)
+            elif self._cap is not None:
                 ret, frame = self._cap.read()
                 if ret and frame is not None:
                     with self._frame_lock:
@@ -227,11 +235,76 @@ class ArducamCamera:
                 else:
                     time.sleep(0.001)
 
+    def _generate_sim_frame(self) -> np.ndarray:
+        """Generate a synthetic test frame with moving pattern."""
+        w, h = self._resolution
+        self._sim_frame_count += 1
+        t = self._sim_frame_count
+
+        # Create gradient background
+        frame = np.zeros((h, w, 3), dtype=np.uint8)
+        x = np.arange(w, dtype=np.float32)
+        y = np.arange(h, dtype=np.float32)
+
+        # Moving color bars
+        shift = t * 3
+        frame[:, :, 0] = ((x[np.newaxis, :] + shift) % 256).astype(np.uint8)  # B
+        frame[:, :, 1] = ((y[:, np.newaxis] + shift) % 256).astype(np.uint8)  # G
+        frame[:, :, 2] = 128  # R
+
+        # Apply simulated exposure/gain
+        if self._exposure is not None:
+            brightness = np.clip(self._exposure / 500.0, 0.1, 3.0)
+            frame = np.clip(frame * brightness, 0, 255).astype(np.uint8)
+        if self._gain is not None:
+            gain_factor = np.clip(self._gain / 32.0, 0.1, 4.0)
+            frame = np.clip(frame * gain_factor, 0, 255).astype(np.uint8)
+
+        # Draw info overlay
+        info = f"SIM {w}x{h} f={t}"
+        cv2.putText(frame, info, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        if self._exposure is not None:
+            cv2.putText(
+                frame,
+                f"Exp: {self._exposure}",
+                (10, 60),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                1,
+            )
+        if self._gain is not None:
+            cv2.putText(
+                frame,
+                f"Gain: {self._gain}",
+                (10, 85),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                1,
+            )
+        if self._focus is not None:
+            cv2.putText(
+                frame,
+                f"Focus: {self._focus}",
+                (10, 110),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                1,
+            )
+        return frame
+
     def _handle_command(self, cmd: str, arg) -> None:
         """Execute a command on the capture thread."""
         if cmd == "set_resolution":
-            w, h = arg
-            self._apply_resolution(w, h)
+            if not self._simulate:
+                w, h = arg
+                self._apply_resolution(w, h)
+        elif self._simulate:
+            # In simulation mode, state is already tracked on the caller thread;
+            # no hardware commands to send.
+            pass
         elif cmd == "set_exposure":
             self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
             self._cap.set(cv2.CAP_PROP_EXPOSURE, arg)
@@ -247,11 +320,16 @@ class ArducamCamera:
         elif cmd == "capture_full_res":
             event, result = arg
             original = self._resolution
-            self._apply_resolution(8000, 6000)
-            ret, frame = self._cap.read()
-            if ret and frame is not None:
-                result[0] = frame
-            self._apply_resolution(original[0], original[1])
+            if self._simulate:
+                self._resolution = (8000, 6000)
+                result[0] = self._generate_sim_frame()
+                self._resolution = original
+            else:
+                self._apply_resolution(8000, 6000)
+                ret, frame = self._cap.read()
+                if ret and frame is not None:
+                    result[0] = frame
+                self._apply_resolution(original[0], original[1])
             event.set()
 
     def _apply_resolution(self, w: int, h: int) -> None:

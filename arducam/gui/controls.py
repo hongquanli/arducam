@@ -44,18 +44,20 @@ class ControlsPanel(QWidget):
         self._exposure_auto.toggled.connect(self._on_exposure_auto_toggled)
         exp_layout.addWidget(self._exposure_auto)
 
-        exp_slider_layout = QHBoxLayout()
+        self._exposure_row = QWidget()
+        exp_slider_layout = QHBoxLayout(self._exposure_row)
+        exp_slider_layout.setContentsMargins(0, 0, 0, 0)
         self._exposure_slider = QSlider(Qt.Orientation.Horizontal)
         self._exposure_slider.setRange(1, 5000)
         self._exposure_slider.setValue(200)
-        self._exposure_slider.setEnabled(False)
         self._exposure_slider.valueChanged.connect(self._on_exposure_changed)
         self._exposure_label = QLabel("200")
         self._exposure_label.setMinimumWidth(40)
         exp_slider_layout.addWidget(QLabel("Value:"))
         exp_slider_layout.addWidget(self._exposure_slider)
         exp_slider_layout.addWidget(self._exposure_label)
-        exp_layout.addLayout(exp_slider_layout)
+        self._exposure_row.setEnabled(False)
+        exp_layout.addWidget(self._exposure_row)
         layout.addWidget(exp_group)
 
         # --- ISO / Gain ---
@@ -80,18 +82,20 @@ class ControlsPanel(QWidget):
         self._focus_auto.toggled.connect(self._on_focus_auto_toggled)
         focus_layout.addWidget(self._focus_auto)
 
-        focus_slider_layout = QHBoxLayout()
+        self._focus_row = QWidget()
+        focus_slider_layout = QHBoxLayout(self._focus_row)
+        focus_slider_layout.setContentsMargins(0, 0, 0, 0)
         self._focus_slider = QSlider(Qt.Orientation.Horizontal)
         self._focus_slider.setRange(0, 1023)
         self._focus_slider.setValue(150)
-        self._focus_slider.setEnabled(False)
         self._focus_slider.valueChanged.connect(self._on_focus_changed)
         self._focus_label = QLabel("150")
         self._focus_label.setMinimumWidth(40)
         focus_slider_layout.addWidget(QLabel("Position:"))
         focus_slider_layout.addWidget(self._focus_slider)
         focus_slider_layout.addWidget(self._focus_label)
-        focus_layout.addLayout(focus_slider_layout)
+        self._focus_row.setEnabled(False)
+        focus_layout.addWidget(self._focus_row)
         layout.addWidget(focus_group)
 
         layout.addStretch()
@@ -102,7 +106,7 @@ class ControlsPanel(QWidget):
             self.resolution_changed.emit(data[0], data[1])
 
     def _on_exposure_auto_toggled(self, checked: bool):
-        self._exposure_slider.setEnabled(not checked)
+        self._exposure_row.setEnabled(not checked)
         self.exposure_auto_changed.emit(checked)
 
     def _on_exposure_changed(self, value: int):
@@ -114,7 +118,7 @@ class ControlsPanel(QWidget):
         self.iso_changed.emit(value)
 
     def _on_focus_auto_toggled(self, checked: bool):
-        self._focus_slider.setEnabled(not checked)
+        self._focus_row.setEnabled(not checked)
         self.focus_auto_changed.emit(checked)
 
     def _on_focus_changed(self, value: int):
