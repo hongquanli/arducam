@@ -401,7 +401,7 @@ class TestCameraControls:
             assert settings["focus_auto"] is True
             assert settings["camera_fps"] == 60
             assert settings["device_index"] == 0
-            assert isinstance(settings["timestamp"], float)
+            assert isinstance(settings["timestamp"], str)
         finally:
             cam.close()
 

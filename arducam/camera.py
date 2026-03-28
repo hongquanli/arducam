@@ -4,6 +4,7 @@ import queue
 import sys
 import threading
 import time
+from datetime import datetime
 from typing import Optional
 
 import cv2
@@ -143,28 +144,35 @@ class ArducamCamera:
 
     def set_exposure(self, value: float) -> None:
         """Queue manual exposure setting."""
+        self._exposure = value
+        self._exposure_auto = False
         self._cmd_queue.put(("set_exposure", value))
 
     def set_exposure_auto(self) -> None:
         """Queue auto-exposure."""
+        self._exposure_auto = True
         self._cmd_queue.put(("set_exposure_auto", None))
 
     def set_iso(self, value: float) -> None:
         """Queue gain/ISO setting."""
+        self._gain = value
         self._cmd_queue.put(("set_iso", value))
 
     def set_focus(self, position: float) -> None:
         """Queue manual focus setting."""
+        self._focus = position
+        self._focus_auto = False
         self._cmd_queue.put(("set_focus", position))
 
     def set_focus_auto(self) -> None:
         """Queue autofocus enable."""
+        self._focus_auto = True
         self._cmd_queue.put(("set_focus_auto", None))
 
     def get_current_settings(self) -> dict:
         """Return a dict of locally tracked settings."""
         return {
-            "timestamp": time.time(),
+            "timestamp": datetime.now().isoformat(),
             "resolution": self._resolution,
             "exposure": self._exposure,
             "exposure_auto": self._exposure_auto,
@@ -225,24 +233,17 @@ class ArducamCamera:
             w, h = arg
             self._apply_resolution(w, h)
         elif cmd == "set_exposure":
-            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)  # manual
+            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
             self._cap.set(cv2.CAP_PROP_EXPOSURE, arg)
-            self._exposure = arg
-            self._exposure_auto = False
         elif cmd == "set_exposure_auto":
-            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)  # auto
-            self._exposure_auto = True
+            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
         elif cmd == "set_iso":
             self._cap.set(cv2.CAP_PROP_GAIN, arg)
-            self._gain = arg
         elif cmd == "set_focus":
             self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
             self._cap.set(cv2.CAP_PROP_FOCUS, arg)
-            self._focus = arg
-            self._focus_auto = False
         elif cmd == "set_focus_auto":
             self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
-            self._focus_auto = True
         elif cmd == "capture_full_res":
             event, result = arg
             original = self._resolution

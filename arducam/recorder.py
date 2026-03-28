@@ -99,3 +99,4 @@ class VideoRecorder:
             self._writer = None
         self._seq_dir = None
         self._fmt = None
+        self._start_time = None
