@@ -35,7 +35,7 @@ def _get_backend() -> int:
     if sys.platform.startswith("linux"):
         return cv2.CAP_V4L2
     elif _is_windows():
-        return cv2.CAP_DSHOW
+        return cv2.CAP_MSMF
     return cv2.CAP_ANY
 
 
