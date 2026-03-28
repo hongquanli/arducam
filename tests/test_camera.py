@@ -98,3 +98,178 @@ class TestArducamCameraInit:
         assert (1920, 1080) in resolutions
         assert (8000, 6000) in resolutions
         assert len(resolutions) == 6
+
+
+# ---------------------------------------------------------------------------
+# Test helpers
+# ---------------------------------------------------------------------------
+
+def _make_fake_frame(w=1920, h=1080):
+    """Return a fake BGR frame."""
+    return np.zeros((h, w, 3), dtype=np.uint8)
+
+
+def _make_open_camera(mock_vc_class, read_returns=None):
+    """Create a mocked ArducamCamera that is already open.
+
+    Args:
+        mock_vc_class: The patched cv2.VideoCapture class.
+        read_returns: If provided, side_effect for cap.read().
+            Defaults to always returning (True, fake_frame).
+
+    Returns:
+        (cam, mock_cap) tuple.
+    """
+    from arducam.camera import ArducamCamera
+
+    mock_cap = MagicMock()
+    mock_cap.isOpened.return_value = True
+    if read_returns is None:
+        mock_cap.read.return_value = (True, _make_fake_frame())
+    else:
+        mock_cap.read.side_effect = read_returns
+    mock_vc_class.return_value = mock_cap
+
+    cam = ArducamCamera()
+    cam.open()
+    time.sleep(0.1)  # let capture thread start
+    return cam, mock_cap
+
+
+# ---------------------------------------------------------------------------
+# Task 3: Capture Thread and Frame Buffer
+# ---------------------------------------------------------------------------
+
+
+class TestCameraOpenClose:
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_open_creates_capture(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            assert cam.is_open
+            mock_vc_class.assert_called_once_with(0, cv2.CAP_ANY)
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_open_sets_mjpg_fourcc(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            fourcc = cv2.VideoWriter_fourcc(*"MJPG")
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_FOURCC, fourcc)
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_close_releases_capture(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        cam.close()
+        time.sleep(0.1)
+        mock_cap.release.assert_called_once()
+        assert not cam.is_open
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_close_idempotent(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        cam.close()
+        cam.close()  # should not raise
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_context_manager(self, mock_vc_class, mock_backend):
+        mock_cap = MagicMock()
+        mock_cap.isOpened.return_value = True
+        mock_cap.read.return_value = (True, _make_fake_frame())
+        mock_vc_class.return_value = mock_cap
+
+        from arducam.camera import ArducamCamera
+
+        with ArducamCamera() as cam:
+            time.sleep(0.1)
+            assert cam.is_open
+        time.sleep(0.1)
+        mock_cap.release.assert_called_once()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_is_open_false_before_open(self, mock_vc_class, mock_backend):
+        from arducam.camera import ArducamCamera
+
+        cam = ArducamCamera()
+        assert not cam.is_open
+
+
+class TestCaptureThread:
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_get_frame_returns_frame(self, mock_vc_class, mock_backend):
+        frame = _make_fake_frame()
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            result = cam.get_frame()
+            assert result is not None
+            assert result.shape == frame.shape
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_get_frame_returns_copy(self, mock_vc_class, mock_backend):
+        frame = _make_fake_frame()
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            f1 = cam.get_frame()
+            f2 = cam.get_frame()
+            assert f1 is not f2
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_get_frame_returns_none_when_no_frame(self, mock_vc_class, mock_backend):
+        mock_cap = MagicMock()
+        mock_cap.isOpened.return_value = True
+        mock_cap.read.return_value = (False, None)
+        mock_vc_class.return_value = mock_cap
+
+        from arducam.camera import ArducamCamera
+
+        cam = ArducamCamera()
+        cam.open()
+        time.sleep(0.1)
+        try:
+            result = cam.get_frame()
+            assert result is None
+        finally:
+            cam.close()
+
+    def test_get_frame_returns_none_when_not_open(self):
+        from arducam.camera import ArducamCamera
+
+        cam = ArducamCamera()
+        assert cam.get_frame() is None
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_resolution_property(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            w, h = cam.resolution
+            # Default resolution should be set
+            assert isinstance(w, int)
+            assert isinstance(h, int)
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_capture_thread_is_daemon(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            assert cam._capture_thread.daemon
+        finally:
+            cam.close()
