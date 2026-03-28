@@ -40,9 +40,15 @@ class VideoRecorder:
             return 0.0
         return time.monotonic() - self._start_time
 
-    def start(self, filepath: str, width: int, height: int,
-              source_fps: int, target_fps: int,
-              fmt: RecordingFormat) -> None:
+    def start(
+        self,
+        filepath: str,
+        width: int,
+        height: int,
+        source_fps: int,
+        target_fps: int,
+        fmt: RecordingFormat,
+    ) -> None:
         self._source_fps = source_fps
         self._target_fps = target_fps
         self._frame_count = 0

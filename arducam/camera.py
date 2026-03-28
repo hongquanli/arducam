@@ -1,9 +1,9 @@
 """Arducam IMX586 48MP USB 3.0 camera control module."""
 
-import sys
-import time
-import threading
 import queue
+import sys
+import threading
+import time
 from typing import Optional
 
 import cv2
@@ -80,9 +80,7 @@ class ArducamCamera:
         self._cap.set(cv2.CAP_PROP_FOURCC, fourcc)
         self._apply_resolution(self._resolution[0], self._resolution[1])
         self._running = True
-        self._capture_thread = threading.Thread(
-            target=self._capture_loop, daemon=True
-        )
+        self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
         self._capture_thread.start()
 
     def close(self) -> None:

@@ -4,7 +4,6 @@ import tempfile
 
 import cv2
 import numpy as np
-import pytest
 
 from arducam.utils import save_capture
 

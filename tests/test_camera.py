@@ -1,13 +1,10 @@
 """Tests for arducam.camera module."""
 
-import sys
 import time
-import threading
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import cv2
 import numpy as np
-import pytest
 
 # ---------------------------------------------------------------------------
 # Task 2: Resolution/FPS Table and Backend Selection
@@ -103,6 +100,7 @@ class TestArducamCameraInit:
 # ---------------------------------------------------------------------------
 # Test helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_fake_frame(w=1920, h=1080):
     """Return a fake BGR frame."""
@@ -219,7 +217,7 @@ class TestCaptureThread:
     @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
     @patch("arducam.camera.cv2.VideoCapture")
     def test_get_frame_returns_copy(self, mock_vc_class, mock_backend):
-        frame = _make_fake_frame()
+        _make_fake_frame()
         cam, mock_cap = _make_open_camera(mock_vc_class)
         try:
             f1 = cam.get_frame()
@@ -375,8 +373,15 @@ class TestCameraControls:
         try:
             settings = cam.get_current_settings()
             expected_keys = {
-                "timestamp", "resolution", "exposure", "exposure_auto",
-                "gain", "focus", "focus_auto", "camera_fps", "device_index",
+                "timestamp",
+                "resolution",
+                "exposure",
+                "exposure_auto",
+                "gain",
+                "focus",
+                "focus_auto",
+                "camera_fps",
+                "device_index",
             }
             assert set(settings.keys()) == expected_keys
         finally:
@@ -406,7 +411,6 @@ class TestCameraControls:
         """Verify that cap.set calls happen on the capture thread, not caller."""
         cam, mock_cap = _make_open_camera(mock_vc_class)
         try:
-            capture_thread = cam._capture_thread
             cam.set_exposure(100.0)
             time.sleep(0.1)
             # The set call should have happened (processed by capture thread)

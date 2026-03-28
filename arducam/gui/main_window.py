@@ -1,19 +1,22 @@
 from datetime import datetime
 
+from PyQt6.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QStatusBar, QFileDialog, QMessageBox,
+    QFileDialog,
+    QHBoxLayout,
+    QMainWindow,
+    QMessageBox,
+    QStatusBar,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import QTimer, QRunnable, QThreadPool, pyqtSlot, QObject, pyqtSignal
-import cv2
-import numpy as np
 
 from arducam.camera import ArducamCamera
-from arducam.recorder import VideoRecorder, RecordingFormat
-from arducam.utils import save_capture
-from arducam.gui.live_view import LiveViewWidget
 from arducam.gui.controls import ControlsPanel
+from arducam.gui.live_view import LiveViewWidget
 from arducam.gui.recording_panel import RecordingPanel
+from arducam.recorder import RecordingFormat, VideoRecorder
+from arducam.utils import save_capture
 
 
 class _FullResCaptureSignals(QObject):
@@ -127,8 +130,7 @@ class MainWindow(QMainWindow):
         settings["full_resolution_capture"] = False
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filepath, _ = QFileDialog.getSaveFileName(
-            self, "Save Image", f"capture_{timestamp}.png",
-            "PNG Images (*.png)"
+            self, "Save Image", f"capture_{timestamp}.png", "PNG Images (*.png)"
         )
         if filepath:
             save_capture(filepath, frame, settings)
@@ -153,8 +155,10 @@ class MainWindow(QMainWindow):
         settings["resolution"] = [8000, 6000]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filepath, _ = QFileDialog.getSaveFileName(
-            self, "Save Full Resolution Image", f"capture_fullres_{timestamp}.png",
-            "PNG Images (*.png)"
+            self,
+            "Save Full Resolution Image",
+            f"capture_fullres_{timestamp}.png",
+            "PNG Images (*.png)",
         )
         if filepath:
             save_capture(filepath, frame, settings)
@@ -172,14 +176,12 @@ class MainWindow(QMainWindow):
 
             if fmt == RecordingFormat.IMAGE_SEQUENCE:
                 filepath = QFileDialog.getExistingDirectory(
-                    self, "Select Directory for Image Sequence",
-                    f"recording_{timestamp}"
+                    self, "Select Directory for Image Sequence", f"recording_{timestamp}"
                 )
             else:
                 ext = "avi" if fmt == RecordingFormat.MJPEG_AVI else "mp4"
                 filepath, _ = QFileDialog.getSaveFileName(
-                    self, "Save Video", f"recording_{timestamp}.{ext}",
-                    f"Video (*.{ext})"
+                    self, "Save Video", f"recording_{timestamp}.{ext}", f"Video (*.{ext})"
                 )
 
             if filepath:

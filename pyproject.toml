@@ -1,0 +1,33 @@
+[project]
+name = "arducam"
+version = "0.1.0"
+description = "Python API and PyQt6 GUI for Arducam IMX586 48MP USB 3.0 camera"
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-python>=4.8.0",
+    "PyQt6>=6.5.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0",
+    "ruff>=0.4.0",
+    "pre-commit>=3.0",
+    "pytest>=8.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:napari"
+testpaths = ["tests"]

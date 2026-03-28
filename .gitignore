@@ -1,3 +1,10 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+*.avi
+*.mp4

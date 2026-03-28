@@ -1,5 +1,5 @@
-from arducam.camera import ArducamCamera, RESOLUTION_FPS_TABLE
-from arducam.recorder import VideoRecorder, RecordingFormat
+from arducam.camera import RESOLUTION_FPS_TABLE, ArducamCamera
+from arducam.recorder import RecordingFormat, VideoRecorder
 from arducam.utils import save_capture
 
 __all__ = [

@@ -1,7 +1,7 @@
-from PyQt6.QtWidgets import QLabel, QSizePolicy
+import numpy as np
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap
-import numpy as np
+from PyQt6.QtWidgets import QLabel, QSizePolicy
 
 
 class LiveViewWidget(QLabel):

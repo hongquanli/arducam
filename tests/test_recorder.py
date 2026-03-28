@@ -1,13 +1,13 @@
 import os
 import tempfile
 import time
+from unittest.mock import MagicMock, patch
 
 import cv2
 import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch
 
-from arducam.recorder import VideoRecorder, RecordingFormat
+from arducam.recorder import RecordingFormat, VideoRecorder
 
 
 class TestRecorderLifecycle:
@@ -17,7 +17,9 @@ class TestRecorderLifecycle:
         mock_writer.isOpened.return_value = True
         mock_writer_class.return_value = mock_writer
         rec = VideoRecorder()
-        rec.start("output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI)
+        rec.start(
+            "output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI
+        )
         assert rec.is_recording
         mock_writer_class.assert_called_once()
 
@@ -27,7 +29,9 @@ class TestRecorderLifecycle:
         mock_writer.isOpened.return_value = True
         mock_writer_class.return_value = mock_writer
         rec = VideoRecorder()
-        rec.start("output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI)
+        rec.start(
+            "output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI
+        )
         rec.stop()
         assert not rec.is_recording
         mock_writer.release.assert_called_once()
@@ -38,7 +42,9 @@ class TestRecorderLifecycle:
         mock_writer.isOpened.return_value = True
         mock_writer_class.return_value = mock_writer
         rec = VideoRecorder()
-        rec.start("output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI)
+        rec.start(
+            "output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI
+        )
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
         rec.write_frame(frame)
         rec.write_frame(frame)
@@ -57,7 +63,14 @@ class TestRecorderLifecycle:
         mock_writer_class.return_value = mock_writer
         rec = VideoRecorder()
         with pytest.raises(RuntimeError, match="Failed to create video writer"):
-            rec.start("output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI)
+            rec.start(
+                "output.avi",
+                1920,
+                1080,
+                source_fps=60,
+                target_fps=60,
+                fmt=RecordingFormat.MJPEG_AVI,
+            )
 
     @patch("arducam.recorder.cv2.VideoWriter")
     def test_elapsed_seconds(self, mock_writer_class):
@@ -65,7 +78,9 @@ class TestRecorderLifecycle:
         mock_writer.isOpened.return_value = True
         mock_writer_class.return_value = mock_writer
         rec = VideoRecorder()
-        rec.start("output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI)
+        rec.start(
+            "output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI
+        )
         time.sleep(0.2)
         assert rec.elapsed_seconds >= 0.1
         rec.stop()
@@ -78,7 +93,9 @@ class TestFrameSkipping:
         mock_writer.isOpened.return_value = True
         mock_writer_class.return_value = mock_writer
         rec = VideoRecorder()
-        rec.start("output.avi", 1920, 1080, source_fps=60, target_fps=30, fmt=RecordingFormat.MJPEG_AVI)
+        rec.start(
+            "output.avi", 1920, 1080, source_fps=60, target_fps=30, fmt=RecordingFormat.MJPEG_AVI
+        )
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
         for _ in range(60):
             rec.write_frame(frame)
@@ -91,7 +108,9 @@ class TestFrameSkipping:
         mock_writer.isOpened.return_value = True
         mock_writer_class.return_value = mock_writer
         rec = VideoRecorder()
-        rec.start("output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI)
+        rec.start(
+            "output.avi", 1920, 1080, source_fps=60, target_fps=60, fmt=RecordingFormat.MJPEG_AVI
+        )
         frame = np.zeros((1080, 1920, 3), dtype=np.uint8)
         for _ in range(60):
             rec.write_frame(frame)
@@ -104,7 +123,9 @@ class TestImageSequence:
         with tempfile.TemporaryDirectory() as tmpdir:
             seq_dir = os.path.join(tmpdir, "sequence")
             rec = VideoRecorder()
-            rec.start(seq_dir, 100, 100, source_fps=10, target_fps=10, fmt=RecordingFormat.IMAGE_SEQUENCE)
+            rec.start(
+                seq_dir, 100, 100, source_fps=10, target_fps=10, fmt=RecordingFormat.IMAGE_SEQUENCE
+            )
             frame = np.full((100, 100, 3), 42, dtype=np.uint8)
             rec.write_frame(frame)
             rec.write_frame(frame)

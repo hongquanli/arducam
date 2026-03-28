@@ -3,12 +3,12 @@ Integration tests — require a real Arducam IMX586 connected.
 Run with: python -m pytest tests/test_integration.py -v -p no:napari
 Skipped automatically if no camera is detected.
 """
-import platform
+
 import time
 
-import pytest
 import cv2
-import numpy as np
+import pytest
+
 from arducam.camera import ArducamCamera, _get_backend
 
 
@@ -22,9 +22,7 @@ def camera_available():
         return False
 
 
-skip_no_camera = pytest.mark.skipif(
-    not camera_available(), reason="No camera connected"
-)
+skip_no_camera = pytest.mark.skipif(not camera_available(), reason="No camera connected")
 
 
 @skip_no_camera

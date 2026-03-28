@@ -1,8 +1,14 @@
+from PyQt6.QtCore import QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
-    QLabel, QSpinBox, QComboBox, QGroupBox,
+    QComboBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import pyqtSignal, QTimer
 
 from arducam.recorder import RecordingFormat
 
