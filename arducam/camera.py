@@ -209,12 +209,15 @@ class ArducamCamera:
             except queue.Empty:
                 pass
 
-            # Read frame
+            # Read frame — cap.read() blocks until a frame is available,
+            # but if read fails (no camera / error), sleep to avoid busy-wait
             if self._cap is not None:
                 ret, frame = self._cap.read()
                 if ret and frame is not None:
                     with self._frame_lock:
                         self._frame = frame
+                else:
+                    time.sleep(0.001)
 
     def _handle_command(self, cmd: str, arg) -> None:
         """Execute a command on the capture thread."""

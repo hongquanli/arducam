@@ -98,6 +98,9 @@ class RecordingPanel(QWidget):
     def reset_record_button(self):
         self._record_btn.setChecked(False)
 
+    def set_full_res_enabled(self, enabled: bool):
+        self._full_res_btn.setEnabled(enabled)
+
     def _on_record_toggled(self, checked: bool):
         if checked:
             self._record_btn.setText("Stop Recording")

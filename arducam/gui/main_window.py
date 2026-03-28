@@ -138,7 +138,7 @@ class MainWindow(QMainWindow):
 
     def _on_full_res_snap(self):
         self._status.showMessage("Capturing full resolution (48MP)...")
-        self._recording_panel._full_res_btn.setEnabled(False)
+        self._recording_panel.set_full_res_enabled(False)
 
         task = _FullResCaptureTask(self._camera)
         task.signals.finished.connect(self._on_full_res_done)
@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(object)
     def _on_full_res_done(self, frame):
-        self._recording_panel._full_res_btn.setEnabled(True)
+        self._recording_panel.set_full_res_enabled(True)
         if frame is None:
             self._status.showMessage("Full resolution capture failed")
             return

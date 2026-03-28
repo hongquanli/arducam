@@ -22,6 +22,7 @@ class VideoRecorder:
         self._seq_dir: Optional[str] = None
         self._source_fps: int = 30
         self._target_fps: int = 30
+        self._skip_interval: float = 1.0
         self._frame_index: int = 0
 
     @property
@@ -51,6 +52,7 @@ class VideoRecorder:
     ) -> None:
         self._source_fps = source_fps
         self._target_fps = target_fps
+        self._skip_interval = source_fps / target_fps if target_fps > 0 else 1.0
         self._frame_count = 0
         self._frame_index = 0
         self._fmt = fmt
@@ -78,9 +80,8 @@ class VideoRecorder:
             return
 
         if self._source_fps > self._target_fps:
-            skip_interval = self._source_fps / self._target_fps
             self._frame_index += 1
-            expected_count = int(self._frame_index / skip_interval)
+            expected_count = int(self._frame_index / self._skip_interval)
             if expected_count <= self._frame_count:
                 return
 
