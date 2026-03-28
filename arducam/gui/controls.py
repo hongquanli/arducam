@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from arducam.camera import RESOLUTION_FPS_TABLE
+from arducam.camera import RESOLUTION_FPS_TABLE, get_exposure_range, get_gain_range
 
 
 class ControlsPanel(QWidget):
@@ -47,11 +47,12 @@ class ControlsPanel(QWidget):
         self._exposure_row = QWidget()
         exp_slider_layout = QHBoxLayout(self._exposure_row)
         exp_slider_layout.setContentsMargins(0, 0, 0, 0)
+        exp_min, exp_max, exp_default, exp_desc = get_exposure_range()
         self._exposure_slider = QSlider(Qt.Orientation.Horizontal)
-        self._exposure_slider.setRange(1, 5000)
-        self._exposure_slider.setValue(200)
+        self._exposure_slider.setRange(exp_min, exp_max)
+        self._exposure_slider.setValue(exp_default)
         self._exposure_slider.valueChanged.connect(self._on_exposure_changed)
-        self._exposure_label = QLabel("200")
+        self._exposure_label = QLabel(str(exp_default))
         self._exposure_label.setMinimumWidth(40)
         exp_slider_layout.addWidget(QLabel("Value:"))
         exp_slider_layout.addWidget(self._exposure_slider)
@@ -63,11 +64,12 @@ class ControlsPanel(QWidget):
         # --- ISO / Gain ---
         iso_group = QGroupBox("ISO / Gain")
         iso_layout = QHBoxLayout(iso_group)
+        gain_min, gain_max, gain_default = get_gain_range()
         self._iso_slider = QSlider(Qt.Orientation.Horizontal)
-        self._iso_slider.setRange(0, 255)
-        self._iso_slider.setValue(32)
+        self._iso_slider.setRange(gain_min, gain_max)
+        self._iso_slider.setValue(gain_default)
         self._iso_slider.valueChanged.connect(self._on_iso_changed)
-        self._iso_label = QLabel("32")
+        self._iso_label = QLabel(str(gain_default))
         self._iso_label.setMinimumWidth(40)
         iso_layout.addWidget(QLabel("Gain:"))
         iso_layout.addWidget(self._iso_slider)

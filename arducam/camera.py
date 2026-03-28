@@ -26,13 +26,33 @@ RESOLUTION_FPS_TABLE: dict[tuple[int, int], int] = {
 _DEFAULT_RESOLUTION = (1920, 1080)
 
 
+def _is_windows() -> bool:
+    return sys.platform == "win32"
+
+
 def _get_backend() -> int:
     """Return the appropriate OpenCV VideoCapture backend for the current OS."""
     if sys.platform.startswith("linux"):
         return cv2.CAP_V4L2
-    elif sys.platform == "win32":
+    elif _is_windows():
         return cv2.CAP_DSHOW
     return cv2.CAP_ANY
+
+
+def get_exposure_range() -> tuple[int, int, int, str]:
+    """Return (min, max, default, description) for exposure on this platform.
+
+    Linux (V4L2): units of 0.1ms, range 1–10000 (0.1ms to 1s).
+    Windows (DirectShow): log2 scale, range -13 to -1 (0.12ms to 0.5s).
+    """
+    if _is_windows():
+        return (-13, -1, -6, "log2 seconds (2^n)")
+    return (1, 10000, 200, "× 0.1ms")
+
+
+def get_gain_range() -> tuple[int, int, int]:
+    """Return (min, max, default) for gain. Device-specific; 0–255 typical for UVC."""
+    return (0, 255, 32)
 
 
 class ArducamCamera:
