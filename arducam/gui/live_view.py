@@ -17,7 +17,7 @@ class LiveViewWidget(QLabel):
         self.setMouseTracking(True)
 
         self._zoom = 1.0
-        self._pan = QPointF(0.0, 0.0)  # pan offset in frame pixel coords
+        self._pan = QPointF(0.0, 0.0)
         self._drag_start = None
         self._pan_start = None
         self._last_frame = None
@@ -33,48 +33,38 @@ class LiveViewWidget(QLabel):
         if self._last_frame is not None:
             self._render()
 
+    def _display_bgr(self, bgr: np.ndarray) -> None:
+        """Convert BGR frame to RGB, scale to widget, and display."""
+        # Keep reference — QImage doesn't copy, so numpy must outlive the paint
+        self._current_rgb = np.ascontiguousarray(bgr[:, :, ::-1])
+        h, w = self._current_rgb.shape[:2]
+        qimg = QImage(self._current_rgb.data, w, h, 3 * w, QImage.Format.Format_RGB888)
+        scaled = qimg.scaled(
+            self.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        self.setPixmap(QPixmap.fromImage(scaled))
+
     def _render(self) -> None:
         frame = self._last_frame
         if frame is None:
             return
 
-        h, w = frame.shape[:2]
-
         if self._zoom <= 1.0:
-            # Fit-to-widget: show entire frame
-            self._current_rgb = np.ascontiguousarray(frame[:, :, ::-1])
-            qimg = QImage(self._current_rgb.data, w, h, 3 * w, QImage.Format.Format_RGB888)
-            scaled = qimg.scaled(
-                self.size(),
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            self.setPixmap(QPixmap.fromImage(scaled))
+            self._display_bgr(frame)
         else:
-            # Crop a region from the frame based on zoom and pan
-            crop_w = int(w / self._zoom)
-            crop_h = int(h / self._zoom)
+            h, w = frame.shape[:2]
+            crop_w = max(1, int(w / self._zoom))
+            crop_h = max(1, int(h / self._zoom))
 
-            # Center + pan offset
             cx = w / 2 + self._pan.x()
             cy = h / 2 + self._pan.y()
 
-            # Clamp to frame bounds
             x1 = int(max(0, min(cx - crop_w / 2, w - crop_w)))
             y1 = int(max(0, min(cy - crop_h / 2, h - crop_h)))
-            x2 = x1 + crop_w
-            y2 = y1 + crop_h
 
-            cropped = frame[y1:y2, x1:x2]
-            self._current_rgb = np.ascontiguousarray(cropped[:, :, ::-1])
-            ch, cw = self._current_rgb.shape[:2]
-            qimg = QImage(self._current_rgb.data, cw, ch, 3 * cw, QImage.Format.Format_RGB888)
-            scaled = qimg.scaled(
-                self.size(),
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-            self.setPixmap(QPixmap.fromImage(scaled))
+            self._display_bgr(frame[y1 : y1 + crop_h, x1 : x1 + crop_w])
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         delta = event.angleDelta().y()
@@ -98,10 +88,11 @@ class LiveViewWidget(QLabel):
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
         if self._drag_start is not None and self._last_frame is not None:
             delta = event.position() - self._drag_start
-            _, w = self._last_frame.shape[:2]
-
-            # Convert widget pixels to frame pixels
-            scale = w / (self.width() * self._zoom)
+            w = self._last_frame.shape[1]
+            widget_w = self.width()
+            if widget_w == 0:
+                return
+            scale = w / (widget_w * self._zoom)
             self._pan = QPointF(
                 self._pan_start.x() - delta.x() * scale,
                 self._pan_start.y() - delta.y() * scale,
