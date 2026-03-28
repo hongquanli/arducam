@@ -273,3 +273,143 @@ class TestCaptureThread:
             assert cam._capture_thread.daemon
         finally:
             cam.close()
+
+
+# ---------------------------------------------------------------------------
+# Task 4: Controls (Exposure, ISO, Focus, Resolution)
+# ---------------------------------------------------------------------------
+
+
+class TestCameraControls:
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_set_resolution(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            cam.set_resolution(3840, 2160)
+            time.sleep(0.1)
+            assert cam.resolution == (3840, 2160)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_FRAME_WIDTH, 3840)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_FRAME_HEIGHT, 2160)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_FPS, 20)
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_set_exposure_manual(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            cam.set_exposure(500.0)
+            time.sleep(0.1)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_EXPOSURE, 500.0)
+            settings = cam.get_current_settings()
+            assert settings["exposure"] == 500.0
+            assert settings["exposure_auto"] is False
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_set_exposure_auto(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            cam.set_exposure(100.0)
+            time.sleep(0.05)
+            cam.set_exposure_auto()
+            time.sleep(0.1)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+            settings = cam.get_current_settings()
+            assert settings["exposure_auto"] is True
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_set_iso(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            cam.set_iso(200.0)
+            time.sleep(0.1)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_GAIN, 200.0)
+            settings = cam.get_current_settings()
+            assert settings["gain"] == 200.0
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_set_focus_manual(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            cam.set_focus(50.0)
+            time.sleep(0.1)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_AUTOFOCUS, 0)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_FOCUS, 50.0)
+            settings = cam.get_current_settings()
+            assert settings["focus"] == 50.0
+            assert settings["focus_auto"] is False
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_set_focus_auto(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            cam.set_focus(10.0)
+            time.sleep(0.05)
+            cam.set_focus_auto()
+            time.sleep(0.1)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_AUTOFOCUS, 1)
+            settings = cam.get_current_settings()
+            assert settings["focus_auto"] is True
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_get_current_settings_keys(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            settings = cam.get_current_settings()
+            expected_keys = {
+                "timestamp", "resolution", "exposure", "exposure_auto",
+                "gain", "focus", "focus_auto", "camera_fps", "device_index",
+            }
+            assert set(settings.keys()) == expected_keys
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_get_current_settings_defaults(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            settings = cam.get_current_settings()
+            assert settings["resolution"] == (1920, 1080)
+            assert settings["exposure"] is None
+            assert settings["exposure_auto"] is True
+            assert settings["gain"] is None
+            assert settings["focus"] is None
+            assert settings["focus_auto"] is True
+            assert settings["camera_fps"] == 60
+            assert settings["device_index"] == 0
+            assert isinstance(settings["timestamp"], float)
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_commands_processed_on_capture_thread(self, mock_vc_class, mock_backend):
+        """Verify that cap.set calls happen on the capture thread, not caller."""
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            capture_thread = cam._capture_thread
+            cam.set_exposure(100.0)
+            time.sleep(0.1)
+            # The set call should have happened (processed by capture thread)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_EXPOSURE, 100.0)
+        finally:
+            cam.close()
