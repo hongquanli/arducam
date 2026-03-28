@@ -116,8 +116,6 @@ class ArducamCamera:
         if not self._simulate:
             backend = _get_backend()
             self._cap = cv2.VideoCapture(self.device_index, backend)
-            fourcc = cv2.VideoWriter_fourcc(*"MJPG")
-            self._cap.set(cv2.CAP_PROP_FOURCC, fourcc)
             self._apply_resolution(self._resolution[0], self._resolution[1])
         self._running = True
         self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
@@ -377,7 +375,8 @@ class ArducamCamera:
         """Set width, height, and FPS on the capture device.
 
         On Windows/DirectShow, resolution changes while streaming often fail
-        silently. We release and reopen the device to force the change.
+        silently. We release and reopen the device, setting resolution before
+        the first read. Order matters: FOURCC first, then resolution, then FPS.
         """
         if self._cap is None:
             return
@@ -385,10 +384,13 @@ class ArducamCamera:
             self._cap.release()
             backend = _get_backend()
             self._cap = cv2.VideoCapture(self.device_index, backend)
-            self._cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        self._cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH, w)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
         fps = self.get_fps_for_resolution(w, h)
         if fps is not None:
             self._cap.set(cv2.CAP_PROP_FPS, fps)
-        self._resolution = (w, h)
+        # Verify the camera accepted the resolution
+        actual_w = int(self._cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        actual_h = int(self._cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self._resolution = (actual_w, actual_h)

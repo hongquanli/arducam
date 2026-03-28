@@ -126,6 +126,18 @@ def _make_open_camera(mock_vc_class, read_returns=None):
         mock_cap.read.return_value = (True, _make_fake_frame())
     else:
         mock_cap.read.side_effect = read_returns
+    # Track cap.set/get so _apply_resolution readback works
+    _props = {}
+
+    def _mock_set(prop, val):
+        _props[prop] = val
+        return True
+
+    def _mock_get(prop):
+        return _props.get(prop, 0.0)
+
+    mock_cap.set.side_effect = _mock_set
+    mock_cap.get.side_effect = _mock_get
     mock_vc_class.return_value = mock_cap
 
     cam = ArducamCamera()
