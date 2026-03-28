@@ -413,3 +413,94 @@ class TestCameraControls:
             mock_cap.set.assert_any_call(cv2.CAP_PROP_EXPOSURE, 100.0)
         finally:
             cam.close()
+
+
+# ---------------------------------------------------------------------------
+# Task 5: Full-Resolution Capture
+# ---------------------------------------------------------------------------
+
+
+class TestFullResolutionCapture:
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_capture_full_resolution_returns_frame(self, mock_vc_class, mock_backend):
+        full_frame = _make_fake_frame(8000, 6000)
+        normal_frame = _make_fake_frame(1920, 1080)
+
+        mock_cap = MagicMock()
+        mock_cap.isOpened.return_value = True
+        mock_cap.read.return_value = (True, normal_frame)
+        mock_vc_class.return_value = mock_cap
+
+        from arducam.camera import ArducamCamera
+
+        cam = ArducamCamera()
+        cam.open()
+        time.sleep(0.1)
+
+        # When full-res capture is triggered, the next read returns full frame
+        def read_side_effect():
+            # After resolution is set to 8000x6000, return the full frame
+            return (True, full_frame)
+
+        mock_cap.read.side_effect = lambda: (True, full_frame)
+
+        try:
+            result = cam.capture_full_resolution()
+            assert result is not None
+            assert result.shape == full_frame.shape
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_capture_full_resolution_restores_original(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            original_res = cam.resolution
+            cam.capture_full_resolution()
+            time.sleep(0.1)
+            # Resolution should be restored
+            assert cam.resolution == original_res
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_capture_full_resolution_sets_8000x6000(self, mock_vc_class, mock_backend):
+        cam, mock_cap = _make_open_camera(mock_vc_class)
+        try:
+            cam.capture_full_resolution()
+            time.sleep(0.1)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_FRAME_WIDTH, 8000)
+            mock_cap.set.assert_any_call(cv2.CAP_PROP_FRAME_HEIGHT, 6000)
+        finally:
+            cam.close()
+
+    @patch("arducam.camera._get_backend", return_value=cv2.CAP_ANY)
+    @patch("arducam.camera.cv2.VideoCapture")
+    def test_capture_full_resolution_returns_none_on_failure(self, mock_vc_class, mock_backend):
+        mock_cap = MagicMock()
+        mock_cap.isOpened.return_value = True
+        mock_cap.read.return_value = (False, None)
+        mock_vc_class.return_value = mock_cap
+
+        from arducam.camera import ArducamCamera
+
+        cam = ArducamCamera()
+        cam.open()
+        time.sleep(0.1)
+        try:
+            result = cam.capture_full_resolution()
+            assert result is None
+        finally:
+            cam.close()
+
+    def test_capture_full_resolution_when_not_open(self):
+        from arducam.camera import ArducamCamera
+
+        cam = ArducamCamera()
+        # Should not crash, just return None (queue won't be processed)
+        # We need to handle this gracefully
+        result = cam.capture_full_resolution()
+        assert result is None

@@ -187,6 +187,8 @@ class ArducamCamera:
         Blocks the caller up to 10 seconds.
         Returns the captured frame or None on timeout.
         """
+        if not self._running:
+            return None
         event = threading.Event()
         result: list[Optional[np.ndarray]] = [None]
         self._cmd_queue.put(("capture_full_res", (event, result)))
