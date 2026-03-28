@@ -15,6 +15,7 @@ from arducam.camera import ArducamCamera
 from arducam.gui.controls import ControlsPanel
 from arducam.gui.live_view import LiveViewWidget
 from arducam.gui.recording_panel import RecordingPanel
+from arducam.gui.styles import PANEL_BG, STATUS_BAR_STYLE
 from arducam.recorder import RecordingFormat, VideoRecorder
 from arducam.utils import save_capture
 
@@ -51,15 +52,19 @@ class MainWindow(QMainWindow):
 
         # --- Layout ---
         central = QWidget()
+        central.setStyleSheet(PANEL_BG)
         self.setCentralWidget(central)
         main_layout = QHBoxLayout(central)
+        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(12, 12, 12, 12)
 
         # Left: live view
         self._live_view = LiveViewWidget()
         main_layout.addWidget(self._live_view, stretch=3)
 
-        # Right: controls + recording
+        # Right: controls + recording in a scroll-friendly column
         right_panel = QVBoxLayout()
+        right_panel.setSpacing(0)
         self._controls = ControlsPanel()
         right_panel.addWidget(self._controls)
         self._recording_panel = RecordingPanel()
@@ -68,6 +73,7 @@ class MainWindow(QMainWindow):
 
         # Status bar
         self._status = QStatusBar()
+        self._status.setStyleSheet(STATUS_BAR_STYLE)
         self.setStatusBar(self._status)
 
         # --- Frame timer ---
@@ -144,6 +150,8 @@ class MainWindow(QMainWindow):
         self._recording_panel.set_full_res_enabled(False)
 
         task = _FullResCaptureTask(self._camera)
+        task.setAutoDelete(False)
+        self._full_res_task = task  # prevent GC before signal delivery
         task.signals.finished.connect(self._on_full_res_done)
         self._thread_pool.start(task)
 

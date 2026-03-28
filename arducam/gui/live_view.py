@@ -3,6 +3,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import QLabel, QSizePolicy
 
+from arducam.gui.styles import LIVE_VIEW_STYLE
+
 
 class LiveViewWidget(QLabel):
     """Displays camera frames. Call update_frame(ndarray) to refresh."""
@@ -12,7 +14,7 @@ class LiveViewWidget(QLabel):
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setMinimumSize(640, 480)
-        self.setStyleSheet("background-color: black; color: white;")
+        self.setStyleSheet(LIVE_VIEW_STYLE)
         self.setText("No Camera Feed")
 
     def update_frame(self, frame: np.ndarray) -> None:

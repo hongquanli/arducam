@@ -297,27 +297,7 @@ class ArducamCamera:
 
     def _handle_command(self, cmd: str, arg) -> None:
         """Execute a command on the capture thread."""
-        if cmd == "set_resolution":
-            if not self._simulate:
-                w, h = arg
-                self._apply_resolution(w, h)
-        elif self._simulate:
-            # In simulation mode, state is already tracked on the caller thread;
-            # no hardware commands to send.
-            pass
-        elif cmd == "set_exposure":
-            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
-            self._cap.set(cv2.CAP_PROP_EXPOSURE, arg)
-        elif cmd == "set_exposure_auto":
-            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
-        elif cmd == "set_iso":
-            self._cap.set(cv2.CAP_PROP_GAIN, arg)
-        elif cmd == "set_focus":
-            self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
-            self._cap.set(cv2.CAP_PROP_FOCUS, arg)
-        elif cmd == "set_focus_auto":
-            self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
-        elif cmd == "capture_full_res":
+        if cmd == "capture_full_res":
             event, result = arg
             original = self._resolution
             if self._simulate:
@@ -331,6 +311,25 @@ class ArducamCamera:
                     result[0] = frame
                 self._apply_resolution(original[0], original[1])
             event.set()
+        elif self._simulate:
+            # In simulation mode, state is already tracked on the caller thread;
+            # no hardware commands to send.
+            return
+        elif cmd == "set_resolution":
+            w, h = arg
+            self._apply_resolution(w, h)
+        elif cmd == "set_exposure":
+            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
+            self._cap.set(cv2.CAP_PROP_EXPOSURE, arg)
+        elif cmd == "set_exposure_auto":
+            self._cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 3)
+        elif cmd == "set_iso":
+            self._cap.set(cv2.CAP_PROP_GAIN, arg)
+        elif cmd == "set_focus":
+            self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)
+            self._cap.set(cv2.CAP_PROP_FOCUS, arg)
+        elif cmd == "set_focus_auto":
+            self._cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
 
     def _apply_resolution(self, w: int, h: int) -> None:
         """Set width, height, and FPS on the capture device."""
