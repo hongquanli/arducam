@@ -102,6 +102,11 @@ class MainWindow(QMainWindow):
     def _poll_frame(self):
         frame = self._camera.get_frame()
         if frame is not None:
+            # Show actual frame size vs requested size to diagnose resolution issues
+            fh, fw = frame.shape[:2]
+            rw, rh = self._camera.resolution
+            if fw != rw or fh != rh:
+                self._status.showMessage(f"Requested {rw}x{rh} but getting {fw}x{fh}")
             self._live_view.update_frame(frame)
             if self._recorder.is_recording:
                 self._recorder.write_frame(frame)
